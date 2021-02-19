@@ -13,6 +13,9 @@ var createTask = function(taskText, taskDate, taskList) {
   // append span and p element to parent li
   taskLi.append(taskSpan, taskP);
 
+  //check due date
+  auditTask(taskLi);
+
 
   // append to ul list on the page
   $("#list-" + taskList).append(taskLi);
@@ -102,12 +105,20 @@ $(".list-group").on("click", "span", function() {
   //swap out elements
   $(this).replaceWith(dateInput);
 
+  dateInput.datepicker({
+    minDate: 1,
+    onClose: function() {
+      //when calendar is closed, force a "change" event on the 'dateInput'
+      $(this).trigger("change");
+    }
+  });
+
   //automatically focus on new element
   dateInput.trigger("focus");
 });
 
-//value of due date was change
-$(".list-group").on("blur", "input[type='text']", function() {
+//value of due date was changed
+$(".list-group").on("change", "input[type='text']", function() {
   //get current text
   var date = $(this)
     .val()
@@ -135,6 +146,9 @@ $(".list-group").on("blur", "input[type='text']", function() {
 
   //replace input with span element
   $(this).replaceWith(taskSpan);
+
+  //pass task's <li> element into auditTask() to check new due date
+  auditTask($(taskSpan).closest(".list-group-item"));
 });
 
 
@@ -230,8 +244,6 @@ $(".card .list-group").sortable({
     //update array on tasks object and save
     tasks[arrName] = tempArr;
     saveTasks();
-
-    console.log(tempArr);
   }
 });
 
@@ -242,12 +254,34 @@ $('#trash').droppable({
     ui.draggable.remove();
   },
   over: function(event, ui) {
-    console.log("over");
+    //console.log("over");
   },
   out: function(event, ui) {
-    console.log("out");
+    //console.log("out");
   }
 });
+
+$("#modalDueDate").datepicker({
+  minDate: 1
+});
+
+var auditTask = function(taskEl) {
+  //get date from task element
+  var date = $(taskEl).find("span").text().trim();
+
+  //convert to moment object at 5pm
+  var time = moment(date, "L").set("hour", 17);
+  
+  //remove any old classes from element
+  $(taskEl).removeClass("list-group-item-warning list-group-item-danger");
+
+  //apply new class if task is near/over due date
+  if (moment().isAfter(time)) {
+    $(taskEl).addClass("list-group-item-danger");
+  } else if (Math.abs(moment().diff(time, "days")) <= 2) {
+    $(taskEl).addClass("list-group-item-warning");
+  }
+};
 
 // load tasks for the first time
 loadTasks();
